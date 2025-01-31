@@ -15,6 +15,7 @@ export default {
             myTime: [1738318690,1738318695],
             herMessage: ['3','4'],
             herTime: [1738318691,1738318696],
+            inputMessage: ref(""),
         };
     },
     methods: {
@@ -39,6 +40,20 @@ export default {
 
             console.log(this.selectedFriend);
         },
+        send() {
+            let message = this.inputMessage.trim();
+            if (message.trim() === '') {
+                alert('请输入消息内容');
+                return;
+            }
+            
+                
+                    this.myMessage.push(message);
+                    this.myTime.push(Date.now());
+                    // this.sortedMessages.push({ text: message, time: Math.floor(Date.now() / 1000), isMine: true });
+                
+                    message = '';
+            },
         
     },
     computed: {
@@ -88,6 +103,11 @@ export default {
             <span class="text">{{ msg.text }}</span>      
         </div>
     </div>
+    <div class="sendContainer">
+        <input type="text" class="chatinput" v-show="secret" placeholder="点击输入消息" v-model="inputMessage"></input>
+        <div class="sendButton" type="button" v-show="secret" @click="send" ><div>发送</div></div>
+    </div>
+
 </template>
 
 <style>
@@ -259,5 +279,44 @@ export default {
     text-align: center;
     overflow: hidden;
     
+}
+.sendContainer{
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+}
+.chatinput{
+    width: 91%;
+    height: 50px;
+    margin: 0 auto;
+    text-align: center;
+    font-size: 24px;
+    color: black;
+    background-color: rosybrown;
+    border: none;
+    user-select: none;
+    cursor: default;
+    border: none;
+    border-radius: 20px;
+    margin-top: 10px;
+    margin-left: 2%;
+    cursor: text;
+}
+.sendButton{
+    width: 5%;
+    height: 50px;
+    margin: 0 auto;
+    text-align: center;
+    font-size: 24px;
+    color: white;
+    background-color: darkslateblue;
+    border: none;
+    user-select: none;
+    cursor: pointer;
+    border: none;
+    border-radius: 20px;
+    margin-top: 10px;
+    line-height: 50px;
 }
 </style>
