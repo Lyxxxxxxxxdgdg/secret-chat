@@ -1,7 +1,7 @@
 <script>
 import { ref } from "vue";
 import sha256 from 'js-sha256';
-
+import axios from "axios";
 export default {
     data() {
         return {
@@ -9,36 +9,84 @@ export default {
             password: ref("5e884898da28047151d0e56f8dc6292773603d0d6aabbdd62a11ef721d1542d8"),
             inputPassword: ref(""),
             secret: ref(false),
-            friends: ['f11111111111','f2'],
+            friends: [],
             selectedFriend: ref(0),
-            myMessage: ['this is a test message,which is very long,so we need to make it long enough to see if it can be displayed in the chat box.testing testing testing,testing is a important thing in life.','2'],
-            myTime: [1738318690,1738318695],
-            herMessage: ['3','4'],
-            herTime: [1738318691,1738318696],
+            myMessage: [],
+            myTime: [],
+            herMessage: [],
+            herTime: [],
             inputMessage: ref(""),
+            username: ref(window.localStorage.getItem("username") || "idk"),
+            filter: ref(""),
+            fetches: [],
         };
     },
     methods: {
+        init(){
+            if(!window.localStorage.getItem("password")){
+
+                //询问密码+用户名
+                let password = prompt("请输入新密码");
+                while (password.trim() == '') {
+                let password = prompt("密码不能为空");
+                }
+                let username = prompt("请输入用户名");
+                while (username.trim() == '') {
+                let username = prompt("用户名不能为空");
+                }
+                window.localStorage.setItem("password", sha256(password));
+                window.localStorage.setItem("username", username);
+
+
+            }
+            this.password = window.localStorage.getItem("password") || this.password
+            this.friends = window.localStorage.getItem("friends")? JSON.parse(window.localStorage.getItem("friends")) : this.friends;
+            if(this.friends.length!=0)this.changefriend(this.friends[0]); 
+        },
+        
         start() {
             this.randomresult = Math.floor(Math.random() * 100);
+
         },
+
         changemode() {
             this.checkPassword();
+            
         },
         checkPassword() {
+            this.password = window.localStorage.getItem("password") || this.password;
             if (this.password === sha256(this.inputPassword)) {
                 alert("密码正确");
                 this.secret=true;
-
+                this.init();
             } else {
                 alert("该功能正在开发");
             }
         },
         changefriend(target){
+            console.log(this.myTime);
+            console.log(this.herTime);
+            console.log(this.fetchData());
             console.log(target);
             this.selectedFriend=this.friends.indexOf(target);
 
             console.log(this.selectedFriend);
+            this.myMessage = JSON.parse(window.localStorage.getItem(target+"myMessage"));
+            this.myTime = JSON.parse(window.localStorage.getItem(target+"myTime")) ;
+            this.herMessage = JSON.parse(window.localStorage.getItem(target+"herMessage")) ;
+            this.herTime = JSON.parse(window.localStorage.getItem(target+"herTime")) ;
+            this.syncMessage(target);
+        },
+        fetchData() {
+            axios.get('http://104.156.225.237:3000/get-data')
+                .then(response => {
+                this.fetches = response.data;
+                })
+                .catch(error => {
+                console.error('There was an error fetching the data!', error);
+                });
+
+            return this.fetches;
         },
         send() {
             let message = this.inputMessage.trim();
@@ -49,10 +97,18 @@ export default {
             
                 
                     this.myMessage.push(message);
-                    this.myTime.push(Date.now());
-                    // this.sortedMessages.push({ text: message, time: Math.floor(Date.now() / 1000), isMine: true });
-                
+                    this.myTime.push(Math.floor(Date.now() / 1000));
+                    window.localStorage.setItem(this.friends[this.selectedFriend]+"myMessage", JSON.stringify(this.myMessage));
+                    window.localStorage.setItem(this.friends[this.selectedFriend]+"myTime", JSON.stringify(this.myTime));
+                    this.fetchData();
+                    this.filter = this.username+"->"+this.friends[this.selectedFriend];
+                    console.log(this.fetchData());
+                    console.log(this.filteredItems);
+
+                    console.log(((this.filteredItems[0]? this.filteredItems[0].value : "").split(',').concat(message)).toString())
+                    axios.post('http://104.156.225.237:3000/add-data', { name: this.username+"->"+this.friends[this.selectedFriend], value: ((this.filteredItems[0]? this.filteredItems[0].value : "{}").split(',').concat(message)).toString()});
                     message = '';
+
             },
             addfriend(){
                 let friendname = prompt("请输入好友名称");
@@ -65,6 +121,41 @@ export default {
                     return;
                 }
                 this.friends.push(friendname);
+                window.localStorage.setItem("friends", JSON.stringify(this.friends));
+                window.localStorage.setItem(friendname+"myMessage", JSON.stringify([]));
+                window.localStorage.setItem(friendname+"myTime", JSON.stringify([]));
+                window.localStorage.setItem(friendname+"herMessage", JSON.stringify([]));
+                window.localStorage.setItem(friendname+"herTime", JSON.stringify([]));
+            },
+            syncMessage(target){
+                this.fetchData();
+                this.filter = target+"->"+this.username;
+                console.log(this.filter);
+                console.log(this.filteredItems);
+                console.log(this.filteredItems[0].value.split(',').slice(1));
+                
+                this.herMessage = this.herMessage.concat(this.filteredItems[0].value.split(',').slice(1));
+                window.localStorage.setItem(this.friends[this.selectedFriend]+"herMessage", JSON.stringify(this.herMessage));
+                for(let i=0;i<this.filteredItems[0].value.split(',').slice(1).length;i++){
+                    this.herTime.push(Math.floor(Date.now() / 1000));
+                }
+                window.localStorage.setItem(this.friends[this.selectedFriend]+"herTime", JSON.stringify(this.herTime));
+                let id = this.filteredItems[0].id;
+                console.log(id);
+                axios.delete(`http://104.156.225.237:3000/delete-data/${id}`)
+            },
+            deleteAll(){
+                if(confirm("确定删除所有聊天记录吗？")){
+                    this.myMessage = [];
+                    this.myTime = [];
+                    this.herMessage = [];
+                    this.herTime = [];
+                    window.localStorage.setItem(this.friends[this.selectedFriend]+"myMessage", JSON.stringify([]));
+                    window.localStorage.setItem(this.friends[this.selectedFriend]+"myTime", JSON.stringify([]));
+                    window.localStorage.setItem(this.friends[this.selectedFriend]+"herMessage", JSON.stringify([]));
+                    window.localStorage.setItem(this.friends[this.selectedFriend]+"herTime", JSON.stringify([]));
+                    this.fetchData();
+                }
             }
         
     },
@@ -85,13 +176,23 @@ export default {
             // 按时间排序
             return combinedMessages.sort((a, b) => new Date(a.time) - new Date(b.time));
         },
+        filteredItems() {
+            if (!this.filter) {
+                return this.fetches;
+            }
+            return this.fetches.filter(item => 
+                item.name==this.filter
+            );
         },
+        },
+    
 };
 
 </script>
 
 <template>
-    <div class="title">testapp</div>
+    <div class="title">随机数生成器</div>
+    
     <input class="password" type="password" v-model="inputPassword"></input>
     <div class="container" >
         <div class="start-btn" type="button" @click="start">
@@ -103,7 +204,8 @@ export default {
         <div class="modetext" @click="changemode">颜色模式</div>
     </div>
     <div class="secretbar" v-show="secret">
-        <div class="secretbartext">chat</div>
+        <div class="secretbartext">chat by nameNotFound-点击好友名字更新来自对方的消息</div>
+        <div class="deleteAll" type="button" @click="deleteAll">删除聊天记录</div>
     </div>
     <div class="userchoose" v-show="secret">
         <div class="singlefriend" v-for="item in friends" type="button" @click="changefriend(item)">{{ item }}</div>
@@ -192,6 +294,8 @@ export default {
     margin-top: 20px;
 }
 .secretbar{
+    display: flex;
+    flex-direction: row;
     width: 96%;
     height: 70px;
     border-radius: 20px;
@@ -207,6 +311,11 @@ export default {
     font-size: 24px;
     color: darkslateblue;
 
+}
+.deleteAll{
+    font-size: 18px;
+    color: darkslateblue;
+    cursor: pointer;
 }
 .userchoose{
     display: flex;
