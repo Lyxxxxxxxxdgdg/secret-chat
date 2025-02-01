@@ -54,6 +54,18 @@ export default {
                 
                     message = '';
             },
+            addfriend(){
+                let friendname = prompt("请输入好友名称");
+                if(friendname.trim() === ''){
+                    alert("请输入好友名称");
+                    return;
+                }
+                if(this.friends.includes(friendname)){
+                    alert("该好友已存在");
+                    return;
+                }
+                this.friends.push(friendname);
+            }
         
     },
     computed: {
@@ -95,6 +107,7 @@ export default {
     </div>
     <div class="userchoose" v-show="secret">
         <div class="singlefriend" v-for="item in friends" type="button" @click="changefriend(item)">{{ item }}</div>
+        <div class="singlefriend" type="button" @click="addfriend">+</div>
     </div>
     <div class="chatinfo" v-show="secret">{{ friends[selectedFriend] }}</div>
     <div class="chatplace" v-show="secret">
