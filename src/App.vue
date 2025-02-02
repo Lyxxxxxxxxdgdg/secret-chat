@@ -2,6 +2,7 @@
 import { ref } from "vue";
 import sha256 from 'js-sha256';
 import axios from "axios";
+import axios from "axios";
 export default {
     data() {
         return {
@@ -10,12 +11,20 @@ export default {
             inputPassword: ref(""),
             secret: ref(false),
             friends: [],
+            friends: [],
             selectedFriend: ref(0),
             myMessage: [],
             myTime: [],
             herMessage: [],
             herTime: [],
+            myMessage: [],
+            myTime: [],
+            herMessage: [],
+            herTime: [],
             inputMessage: ref(""),
+            username: ref(window.localStorage.getItem("username") || "idk"),
+            filter: ref(""),
+            fetches: [],
             username: ref(window.localStorage.getItem("username") || "idk"),
             filter: ref(""),
             fetches: [],
@@ -60,16 +69,22 @@ export default {
         start() {
             this.randomresult = Math.floor(Math.random() * 100);
 
+
         },
+
 
         changemode() {
             this.checkPassword();
+            
             
         },
         checkPassword() {
             this.init();
         },
         changefriend(target){
+            console.log(this.myTime);
+            console.log(this.herTime);
+            console.log(this.fetchData());
             console.log(this.myTime);
             console.log(this.herTime);
             console.log(this.fetchData());
@@ -117,7 +132,18 @@ export default {
 
                     console.log(((this.filteredItems[0]? this.filteredItems[0].value : "").split(',').concat(message)).toString())
                     axios.post('http://104.156.225.237:3000/add-data', { name: this.username+"->"+this.friends[this.selectedFriend], value: ((this.filteredItems[0]? this.filteredItems[0].value : "{}").split(',').concat(message)).toString()});
+                    this.myTime.push(Math.floor(Date.now() / 1000));
+                    window.localStorage.setItem(this.friends[this.selectedFriend]+"myMessage", JSON.stringify(this.myMessage));
+                    window.localStorage.setItem(this.friends[this.selectedFriend]+"myTime", JSON.stringify(this.myTime));
+                    this.fetchData();
+                    this.filter = this.username+"->"+this.friends[this.selectedFriend];
+                    console.log(this.fetchData());
+                    console.log(this.filteredItems);
+
+                    console.log(((this.filteredItems[0]? this.filteredItems[0].value : "").split(',').concat(message)).toString())
+                    axios.post('http://104.156.225.237:3000/add-data', { name: this.username+"->"+this.friends[this.selectedFriend], value: ((this.filteredItems[0]? this.filteredItems[0].value : "{}").split(',').concat(message)).toString()});
                     message = '';
+
 
             },
             addfriend(){
@@ -131,6 +157,41 @@ export default {
                     return;
                 }
                 this.friends.push(friendname);
+                window.localStorage.setItem("friends", JSON.stringify(this.friends));
+                window.localStorage.setItem(friendname+"myMessage", JSON.stringify([]));
+                window.localStorage.setItem(friendname+"myTime", JSON.stringify([]));
+                window.localStorage.setItem(friendname+"herMessage", JSON.stringify([]));
+                window.localStorage.setItem(friendname+"herTime", JSON.stringify([]));
+            },
+            syncMessage(target){
+                this.fetchData();
+                this.filter = target+"->"+this.username;
+                console.log(this.filter);
+                console.log(this.filteredItems);
+                console.log(this.filteredItems[0].value.split(',').slice(1));
+                
+                this.herMessage = this.herMessage.concat(this.filteredItems[0].value.split(',').slice(1));
+                window.localStorage.setItem(this.friends[this.selectedFriend]+"herMessage", JSON.stringify(this.herMessage));
+                for(let i=0;i<this.filteredItems[0].value.split(',').slice(1).length;i++){
+                    this.herTime.push(Math.floor(Date.now() / 1000));
+                }
+                window.localStorage.setItem(this.friends[this.selectedFriend]+"herTime", JSON.stringify(this.herTime));
+                let id = this.filteredItems[0].id;
+                console.log(id);
+                axios.delete(`http://104.156.225.237:3000/delete-data/${id}`)
+            },
+            deleteAll(){
+                if(confirm("确定删除所有聊天记录吗？")){
+                    this.myMessage = [];
+                    this.myTime = [];
+                    this.herMessage = [];
+                    this.herTime = [];
+                    window.localStorage.setItem(this.friends[this.selectedFriend]+"myMessage", JSON.stringify([]));
+                    window.localStorage.setItem(this.friends[this.selectedFriend]+"myTime", JSON.stringify([]));
+                    window.localStorage.setItem(this.friends[this.selectedFriend]+"herMessage", JSON.stringify([]));
+                    window.localStorage.setItem(this.friends[this.selectedFriend]+"herTime", JSON.stringify([]));
+                    this.fetchData();
+                }
                 window.localStorage.setItem("friends", JSON.stringify(this.friends));
                 window.localStorage.setItem(friendname+"myMessage", JSON.stringify([]));
                 window.localStorage.setItem(friendname+"myTime", JSON.stringify([]));
@@ -194,13 +255,24 @@ export default {
                 item.name==this.filter
             );
         },
+        filteredItems() {
+            if (!this.filter) {
+                return this.fetches;
+            }
+            return this.fetches.filter(item => 
+                item.name==this.filter
+            );
         },
+        },
+    
     
 };
 
 </script>
 
 <template>
+    <div class="title">随机数生成器</div>
+    
     <div class="title">随机数生成器</div>
     
     <input class="password" type="password" v-model="inputPassword"></input>
@@ -214,6 +286,8 @@ export default {
         <div class="modetext" @click="changemode">颜色模式</div>
     </div>
     <div class="secretbar" v-show="secret">
+        <div class="secretbartext">chat by nameNotFound-点击好友名字更新来自对方的消息</div>
+        <div class="deleteAll" type="button" @click="deleteAll">删除聊天记录</div>
         <div class="secretbartext">chat by nameNotFound-点击好友名字更新来自对方的消息</div>
         <div class="deleteAll" type="button" @click="deleteAll">删除聊天记录</div>
     </div>
@@ -306,6 +380,8 @@ export default {
 .secretbar{
     display: flex;
     flex-direction: row;
+    display: flex;
+    flex-direction: row;
     width: 96%;
     height: 70px;
     border-radius: 20px;
@@ -321,6 +397,11 @@ export default {
     font-size: 24px;
     color: darkslateblue;
 
+}
+.deleteAll{
+    font-size: 18px;
+    color: darkslateblue;
+    cursor: pointer;
 }
 .deleteAll{
     font-size: 18px;
