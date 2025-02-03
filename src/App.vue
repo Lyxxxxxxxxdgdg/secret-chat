@@ -2,7 +2,7 @@
 import { ref } from "vue";
 import sha256 from 'js-sha256';
 import axios from "axios";
-import axios from "axios";
+
 export default {
     data() {
         return {
@@ -28,52 +28,87 @@ export default {
             username: ref(window.localStorage.getItem("username") || "idk"),
             filter: ref(""),
             fetches: [],
+            errtime: ref(0),
         };
     },
     methods: {
         init(){
-            if (window.localStorage.getItem('username')) {
-                //检查密码逻辑还没写记得写
+            console.log(this.fetchData());
+            console.log(window.localStorage.getItem("username"));
+            let username = window.localStorage.getItem("username") || 0;
+            if(( sha256(this.inputPassword)!=this.password && (!window.localStorage.getItem("username")) ) ){
+
+                alert("该功能正在开发");
+                return;
             }
-            this.filter='password';
             this.fetchData(true);
+            this.filter='password';
             let passwords = (this.filteredItems[0]? this.filteredItems[0].value : "") .split(',');
+            if(passwords[0]==''){
+                passwords.pop();
+            }
             if(passwords.length%2!=0){
                 passwords.pop();
             }
-            let username = prompt("请输入用户名-未注册自动注册");
-            while (username.trim() == '' ) {
-                let username = prompt("用户名不能为空");
+            console.log(this.inputPassword==this.password);
+            console.log(this.inputPassword);
+            if((window.localStorage.getItem("username") && passwords.indexOf(window.localStorage.getItem("username"))%2==0 && sha256(this.inputPassword) != passwords[passwords.indexOf(username)+1]) ){
+                alert("该功能正在开发");
+                return;
+            }else if(window.localStorage.getItem("username") && passwords.indexOf(window.localStorage.getItem("username"))%2!=0 ){
+                alert("请再尝试一次")
+                this.errtime+=1;
+                if(this.errtime>=2)window.localStorage.setItem("username",'')
+                return;
             }
-            let password = prompt("请输入密码");
+            let password="";
+            username= "";
+            if(((!window.localStorage.getItem("username") ) && (! passwords.indexOf(window.localStorage.getItem("username"))%2==0)) && sha256(this.inputPassword)==this.password){
+             username = prompt("请输入用户名-未注册自动注册");
+            while (username.trim() == '' ) {
+                 username = prompt("用户名不能为空");
+            }
+            password = prompt("请输入密码");
             while (password.trim() == '') {
-                let password = prompt("密码不能为空");
+                password = prompt("密码不能为空");
+            }
             }
             if(passwords.indexOf(username)%2==0 && sha256(password) === passwords[passwords.indexOf(username)+1]){
-                this.secret=true;
-                this.username=username;
-                window.localStorage.setItem("username", username);
+                if(username)window.localStorage.setItem("username", username);
+                this.username=window.localStorage.getItem("username");
+                alert("请继续");
             }else if(passwords.indexOf(username)%2==0 && sha256(password) != passwords[passwords.indexOf(username)+1]){
                 alert("密码错误/该用户已被注册");
                 return;
-            }else{
-                alert("该用户未注册-正在注册");
+            }else if(passwords.indexOf(username)%2!=0 ){
+                console.log(1);
+                console.log(passwords);
+                console.log(username);
+                console.log(password);
+                alert("请继续");
+                console.log(2);
+                if(username)window.localStorage.setItem("username", username);
+                console.log(3);
+                console.log(window.localStorage.getItem("username"));
+                this.username=username;
                 axios.post('http://104.156.225.237:3000/add-data', { name: 'password', value: passwords.concat([username,sha256(password)]).toString()});
             }
             this.friends = window.localStorage.getItem("friends")? JSON.parse(window.localStorage.getItem("friends")) : this.friends;
             if(this.friends.length!=0)this.changefriend(this.friends[0]); 
+            this.secret=true;
         },
             
         
         
         start() {
             this.randomresult = Math.floor(Math.random() * 100);
-
+            
 
         },
 
 
         changemode() {
+            console.log(this.fetchData());
             this.checkPassword();
             
             
@@ -164,21 +199,24 @@ export default {
                 window.localStorage.setItem(friendname+"herTime", JSON.stringify([]));
             },
             syncMessage(target){
+                console.log(11221);
                 this.fetchData();
                 this.filter = target+"->"+this.username;
                 console.log(this.filter);
                 console.log(this.filteredItems);
+                if(this.filteredItems.length==0)return;
                 console.log(this.filteredItems[0].value.split(',').slice(1));
                 
                 this.herMessage = this.herMessage.concat(this.filteredItems[0].value.split(',').slice(1));
-                window.localStorage.setItem(this.friends[this.selectedFriend]+"herMessage", JSON.stringify(this.herMessage));
+                window.localStorage.setItem(target+"herMessage", JSON.stringify(this.herMessage));
                 for(let i=0;i<this.filteredItems[0].value.split(',').slice(1).length;i++){
                     this.herTime.push(Math.floor(Date.now() / 1000));
                 }
-                window.localStorage.setItem(this.friends[this.selectedFriend]+"herTime", JSON.stringify(this.herTime));
+                window.localStorage.setItem(target+"herTime", JSON.stringify(this.herTime));
                 let id = this.filteredItems[0].id;
                 console.log(id);
-                axios.delete(`http://104.156.225.237:3000/delete-data/${id}`)
+                axios.post('http://104.156.225.237:3000/add-data', { name: target+"->"+this.username, value:"{}"});
+                
             },
             deleteAll(){
                 if(confirm("确定删除所有聊天记录吗？")){
@@ -192,42 +230,9 @@ export default {
                     window.localStorage.setItem(this.friends[this.selectedFriend]+"herTime", JSON.stringify([]));
                     this.fetchData();
                 }
-                window.localStorage.setItem("friends", JSON.stringify(this.friends));
-                window.localStorage.setItem(friendname+"myMessage", JSON.stringify([]));
-                window.localStorage.setItem(friendname+"myTime", JSON.stringify([]));
-                window.localStorage.setItem(friendname+"herMessage", JSON.stringify([]));
-                window.localStorage.setItem(friendname+"herTime", JSON.stringify([]));
             },
-            syncMessage(target){
-                this.fetchData();
-                this.filter = target+"->"+this.username;
-                console.log(this.filter);
-                console.log(this.filteredItems);
-                console.log(this.filteredItems[0].value.split(',').slice(1));
-                
-                this.herMessage = this.herMessage.concat(this.filteredItems[0].value.split(',').slice(1));
-                window.localStorage.setItem(this.friends[this.selectedFriend]+"herMessage", JSON.stringify(this.herMessage));
-                for(let i=0;i<this.filteredItems[0].value.split(',').slice(1).length;i++){
-                    this.herTime.push(Math.floor(Date.now() / 1000));
-                }
-                window.localStorage.setItem(this.friends[this.selectedFriend]+"herTime", JSON.stringify(this.herTime));
-                let id = this.filteredItems[0].id;
-                console.log(id);
-                axios.delete(`http://104.156.225.237:3000/delete-data/${id}`)
-            },
-            deleteAll(){
-                if(confirm("确定删除所有聊天记录吗？")){
-                    this.myMessage = [];
-                    this.myTime = [];
-                    this.herMessage = [];
-                    this.herTime = [];
-                    window.localStorage.setItem(this.friends[this.selectedFriend]+"myMessage", JSON.stringify([]));
-                    window.localStorage.setItem(this.friends[this.selectedFriend]+"myTime", JSON.stringify([]));
-                    window.localStorage.setItem(this.friends[this.selectedFriend]+"herMessage", JSON.stringify([]));
-                    window.localStorage.setItem(this.friends[this.selectedFriend]+"herTime", JSON.stringify([]));
-                    this.fetchData();
-                }
-            }
+            
+            
         
     },
     computed: {
@@ -255,14 +260,7 @@ export default {
                 item.name==this.filter
             );
         },
-        filteredItems() {
-            if (!this.filter) {
-                return this.fetches;
-            }
-            return this.fetches.filter(item => 
-                item.name==this.filter
-            );
-        },
+        
         },
     
     
@@ -272,9 +270,7 @@ export default {
 
 <template>
     <div class="title">随机数生成器</div>
-    
-    <div class="title">随机数生成器</div>
-    
+        
     <input class="password" type="password" v-model="inputPassword"></input>
     <div class="container" >
         <div class="start-btn" type="button" @click="start">
@@ -286,8 +282,6 @@ export default {
         <div class="modetext" @click="changemode">颜色模式</div>
     </div>
     <div class="secretbar" v-show="secret">
-        <div class="secretbartext">chat by nameNotFound-点击好友名字更新来自对方的消息</div>
-        <div class="deleteAll" type="button" @click="deleteAll">删除聊天记录</div>
         <div class="secretbartext">chat by nameNotFound-点击好友名字更新来自对方的消息</div>
         <div class="deleteAll" type="button" @click="deleteAll">删除聊天记录</div>
     </div>
@@ -403,11 +397,7 @@ export default {
     color: darkslateblue;
     cursor: pointer;
 }
-.deleteAll{
-    font-size: 18px;
-    color: darkslateblue;
-    cursor: pointer;
-}
+
 .userchoose{
     display: flex;
     flex-direction: row;
