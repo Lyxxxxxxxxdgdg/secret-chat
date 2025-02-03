@@ -38,7 +38,7 @@ export default {
             let username = window.localStorage.getItem("username") || 0;
             if(( sha256(this.inputPassword)!=this.password && (!window.localStorage.getItem("username")) ) ){
 
-                alert("该功能正在开发1");
+                alert("该功能正在开发");
                 return;
             }
             this.fetchData(true);
@@ -53,7 +53,7 @@ export default {
             console.log(this.inputPassword==this.password);
             console.log(this.inputPassword);
             if((window.localStorage.getItem("username") && passwords.indexOf(window.localStorage.getItem("username"))%2==0 && sha256(this.inputPassword) != passwords[passwords.indexOf(username)+1]) ){
-                alert("该功能正在开发2");
+                alert("该功能正在开发");
                 return;
             }else if(window.localStorage.getItem("username") && passwords.indexOf(window.localStorage.getItem("username"))%2!=0 ){
                 alert("请再尝试一次")
@@ -85,7 +85,7 @@ export default {
                 console.log(passwords);
                 console.log(username);
                 console.log(password);
-                alert("请继续(点击完成)");
+                alert("请继续");
                 console.log(2);
                 if(username)window.localStorage.setItem("username", username);
                 console.log(3);
